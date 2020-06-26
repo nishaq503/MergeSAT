@@ -19,7 +19,15 @@ pub enum EvaluatedClause {
 
 impl Display for Clause {
     fn fmt(&self, f: &mut Formatter) -> Result {
-        write!(f, "{}", self.to_string())
+        write!(
+            f,
+            "{}",
+            self.literals
+                .iter()
+                .map(|x| x.to_string())
+                .collect::<Vec<String>>()
+                .join(" ")
+        )
     }
 }
 
@@ -27,31 +35,21 @@ impl Clause {
     pub fn new(literals: Vec<i64>) -> Clause {
         Clause {
             literals: literals.clone(),
-            partial_literals: literals.clone(),
+            partial_literals: literals,
         }
-    }
-
-    pub fn to_string(&self) -> String {
-        self.literals
-            .iter()
-            .map(|x| x.to_string())
-            .collect::<Vec<String>>()
-            .join(" ")
     }
 
     pub fn len(&self) -> usize {
         self.partial_literals.len()
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.partial_literals.is_empty()
+    }
+
     pub fn contains(&self, variable: u64) -> bool {
-        if self
-            .partial_literals
+        self.partial_literals
             .iter()
             .any(|&literal| (literal.abs() as u64) == variable)
-        {
-            true
-        } else {
-            false
-        }
     }
 }

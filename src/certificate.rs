@@ -31,7 +31,11 @@ impl Certificate {
         self.assignments.len()
     }
 
-    pub fn insert(&mut self, variable: u64, assignment: Assignment) -> () {
+    pub fn is_empty(&self) -> bool {
+        self.assignments.is_empty()
+    }
+
+    pub fn insert(&mut self, variable: u64, assignment: Assignment) {
         self.assignments.insert(variable, assignment);
     }
 }
