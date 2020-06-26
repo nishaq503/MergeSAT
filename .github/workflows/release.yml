@@ -18,8 +18,8 @@ jobs:
         # To make this actually run, add -w yes
         run: > 
           docker run 
-          --env GH_TOKEN="${{ secrets.GITHUB_TOKEN }}"
+          --env GH_TOKEN="${{ secrets.MERGESAT_GITHUB_TOKEN }}"
           --env CARGO_TOKEN="${{ secrets.CARGO_TOKEN }}" 
-          --env GIT_COMMITTER_NAME="URI ABD"
-          --env GIT_COMMITTER_EMAIL="info@uri-abd.org" 
+          --env GIT_COMMITTER_NAME="Najib Ishaq"
+          --env GIT_COMMITTER_EMAIL="najib_ishaq@zoho.com"
           release /bin/bash -c "cargo install semantic-rs && semantic-rs"
