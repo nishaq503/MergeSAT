@@ -1,0 +1,55 @@
+use std::fmt::{Display, Formatter, Result};
+
+/// A Clause is represented as a Vec of integers.
+/// Each integer value represents a variable, and the sign represents whether a variable is negated.
+/// For example, the vec [3, -1, 4] represents the clause (x_3 or (not x_1) or x_4).
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct Clause {
+    literals: Vec<i64>,
+    partial_literals: Vec<i64>,
+}
+
+/// Return type from application of a certificate to a clause.
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub enum EvaluatedClause {
+    True,
+    False,
+    Undecided(Clause),
+}
+
+impl Display for Clause {
+    fn fmt(&self, f: &mut Formatter) -> Result {
+        write!(
+            f,
+            "{}",
+            self.literals
+                .iter()
+                .map(|x| x.to_string())
+                .collect::<Vec<String>>()
+                .join(" ")
+        )
+    }
+}
+
+impl Clause {
+    pub fn new(literals: Vec<i64>) -> Clause {
+        Clause {
+            literals: literals.clone(),
+            partial_literals: literals,
+        }
+    }
+
+    pub fn len(&self) -> usize {
+        self.partial_literals.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.partial_literals.is_empty()
+    }
+
+    pub fn contains(&self, variable: u64) -> bool {
+        self.partial_literals
+            .iter()
+            .any(|&literal| (literal.abs() as u64) == variable)
+    }
+}
