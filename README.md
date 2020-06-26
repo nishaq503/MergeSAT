@@ -1,2 +1,3 @@
-# MergeSAT
-A fast divide-and-conquer SAT Solver
+# MergeSAT Paper
+
+This repo contains the paper for my SAT solver MergeSAT.

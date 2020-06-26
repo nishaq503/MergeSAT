@@ -316,3 +316,4 @@ benchmarks
 
 /target
 #Cargo.lock
+*.pdf
