@@ -287,3 +287,7 @@ TSWLatexianTemp*
 
 out
 .idea
+.mergesat
+benchmarks
+target
+Cargo.lock
