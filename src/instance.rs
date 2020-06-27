@@ -51,6 +51,14 @@ impl Certificate {
         self.assignments.is_empty()
     }
 
+    pub fn contains_literal(&self, literal: Literal) -> bool {
+        self.assignments.contains_key(&(literal.abs() as Variable))
+    }
+
+    pub fn contains_variable(&self, variable: Variable) -> bool {
+        self.assignments.contains_key(&variable)
+    }
+
     pub fn insert(&mut self, literal: Literal) -> result::Result<(), &str> {
         let variable = literal.abs() as Variable;
         let assignment = if literal > 0 {
