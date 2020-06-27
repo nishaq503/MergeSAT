@@ -11,9 +11,9 @@ type InstanceSize = (u32, u32, u32);
 /// An Assignment for a variable is either True, False, or Unassigned.
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum Assignment {
-    True,
-    False,
-    Unassigned,
+    True = 1,
+    False = -1,
+    Unassigned = 0,
 }
 
 /// A certificate is represented by a HashMap of Index to Assignment,
