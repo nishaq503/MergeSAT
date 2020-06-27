@@ -104,6 +104,28 @@ impl Certificate {
             Assignment::Unassigned
         }
     }
+
+    pub fn is_compatible(&self, other: &Certificate) -> bool {
+        let mut common_variables: Vec<Variable> = vec![];
+
+        for &variable in self.assignments.keys() {
+            if other.contains_variable(variable) {
+                common_variables.push(variable)
+            } else {
+                continue;
+            }
+        }
+
+        for &variable in common_variables.iter() {
+            let literal = variable as Literal;
+            if self.get(literal) == other.get(literal) {
+                continue;
+            } else {
+                return false;
+            }
+        }
+        true
+    }
 }
 
 /// A Clause is represented as a Vec of integers.
