@@ -67,16 +67,13 @@ impl Certificate {
             Assignment::False
         };
 
-        if self.assignments.contains_key(&variable) {
-            let &old_assignment = self.assignments.get(&variable).unwrap();
-            if old_assignment == assignment {
-                Ok(())
-            } else {
-                Err("tried to insert variable with conflicting assignment")
-            }
-        } else {
-            self.assignments.insert(variable, assignment);
+        let &mut assignment= self.assignments.entry(variable).or_insert(assignment);
+        let old_assignment = *self.assignments.get(&variable).unwrap();
+
+        if old_assignment == assignment {
             Ok(())
+        } else {
+            Err("tried to insert variable with conflicting assignment")
         }
     }
 
