@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::collections::HashSet;
-use std::fmt::{Display, Formatter, Result};
+use std::{fmt, result};
 
 type Literal = i32;
 type Variable = u32;
@@ -9,7 +9,7 @@ type Literals = Vec<Literal>;
 type InstanceSize = (u32, u32, u32);
 
 /// An Assignment for a variable is either True, False, or Unassigned.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub enum Assignment {
     True,
     False,
@@ -29,7 +29,7 @@ pub struct Certificate {
 impl Certificate {
     pub fn new(literal: Literal) -> Certificate {
         let mut certificate = Certificate::empty();
-        certificate.insert(literal);
+        certificate.insert(literal).unwrap();
         certificate
     }
 
@@ -51,12 +51,24 @@ impl Certificate {
         self.assignments.is_empty()
     }
 
-    pub fn insert(&mut self, literal: Literal) {
+    pub fn insert(&mut self, literal: Literal) -> result::Result<(), &str> {
         let variable = literal.abs() as Variable;
-        if literal > 0 {
-            self.assignments.insert(variable, Assignment::True);
+        let assignment = if literal > 0 {
+            Assignment::True
         } else {
-            self.assignments.insert(variable, Assignment::False);
+            Assignment::False
+        };
+
+        if self.assignments.contains_key(&variable) {
+            let &old_assignment = self.assignments.get(&variable).unwrap();
+            if old_assignment == assignment {
+                Ok(())
+            } else {
+                Err("tried to insert variable with conflicting assignment")
+            }
+        } else {
+            self.assignments.insert(variable, assignment);
+            Ok(())
         }
     }
 
@@ -103,8 +115,8 @@ pub enum EvaluatedClause {
     Undecided(Literals),
 }
 
-impl Display for Clause {
-    fn fmt(&self, f: &mut Formatter) -> Result {
+impl fmt::Display for Clause {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
             "{}",
@@ -191,8 +203,8 @@ pub enum EvaluatedInstance {
     Undecided(Vec<Clause>),
 }
 
-impl Display for Instance {
-    fn fmt(&self, f: &mut Formatter) -> Result {
+impl fmt::Display for Instance {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
             "{}",
