@@ -126,6 +126,18 @@ impl Certificate {
         }
         true
     }
+
+    pub fn merge(&self, other: &Certificate) -> Option<Certificate> {
+        if self.is_compatible(other) {
+            let mut certificate = Certificate::from(self.assignments.clone());
+            for (&k, _) in other.assignments.iter() {
+                certificate.insert(k as Literal).unwrap();
+            }
+            Some(certificate)
+        } else {
+            None
+        }
+    }
 }
 
 /// A Clause is represented as a Vec of integers.
