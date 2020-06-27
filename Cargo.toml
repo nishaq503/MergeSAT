@@ -3,6 +3,19 @@ name = "merge_sat"
 version = "0.1.0"
 authors = ["Najib Ishaq <najib_ishaq@my.uri.edu>"]
 edition = "2018"
+license = "MIT"
+description = "A Fast Divide-and-Conquer SAT Solver"
+homepage = "README.md"
+documentation = "README.md"
+repository = "https://github.com/nishaq503/MergeSAT.git"
+readme = "README.md"
+exclude = [
+    ".devcontainer",
+    ".github",
+    ".hooks",
+    "init.sh",
+    "*.cnf",
+]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
