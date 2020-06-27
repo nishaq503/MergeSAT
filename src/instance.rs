@@ -67,7 +67,7 @@ impl Certificate {
             Assignment::False
         };
 
-        let &mut assignment= self.assignments.entry(variable).or_insert(assignment);
+        let &mut assignment = self.assignments.entry(variable).or_insert(assignment);
         let old_assignment = *self.assignments.get(&variable).unwrap();
 
         if old_assignment == assignment {
@@ -339,6 +339,96 @@ impl Instance {
         }
     }
 
+    fn extend_common(&mut self, literals: HashSet<Literal>) -> EvaluatedInstance {
+        let mut certificate = Certificate::empty();
+        for &literal in literals.iter() {
+            match certificate.insert(literal) {
+                Ok(()) => {
+                    continue;
+                }
+                Err(_) => {
+                    return EvaluatedInstance::False;
+                }
+            }
+        }
+
+        for (&k, &v) in certificate.assignments.iter() {
+            self.common_certificate.assignments.insert(k, v);
+        }
+
+        match self.apply(&certificate) {
+            EvaluatedInstance::True => EvaluatedInstance::True,
+            EvaluatedInstance::False => EvaluatedInstance::False,
+            EvaluatedInstance::Undecided(partial_clauses) => {
+                self.partial_clauses = partial_clauses;
+                EvaluatedInstance::Undecided(self.partial_clauses.clone())
+            }
+        }
+    }
+
+    pub fn cascade(&mut self) -> EvaluatedInstance {
+        let mut num_clauses = self.partial_clauses.len();
+
+        loop {  // cascade unit clauses and pure literals
+            loop {  // cascade unit clauses
+                let mut unit_literals: HashSet<Literal> = HashSet::new();
+
+                // find all clauses with len 1 and collect their literals.
+                for clause in self.partial_clauses.iter() {
+                    if clause.partial_literals.len() == 1 {
+                        unit_literals.insert(clause.partial_literals[0]);
+                    } else {
+                        continue;
+                    }
+                }
+                if unit_literals.is_empty() {
+                    break;
+                } else {
+                    self.extend_common(unit_literals);
+                }
+            }
+
+            loop {  // cascade pure literals
+                let mut pure_literals: HashSet<Literal> = HashSet::new();
+
+                // get set of all literals
+                let mut literals: HashSet<Literal> = HashSet::new();
+                for clause in self.partial_clauses.iter() {
+                    for &literal in clause.partial_literals.iter() {
+                        literals.insert(literal);
+                    }
+                }
+                // find every literal whose negation is not present in the set of all literals
+                for &literal in literals.iter() {
+                    if literals.contains(&(-literal)) {
+                        continue;
+                    } else {
+                        pure_literals.insert(literal);
+                    }
+                }
+                if pure_literals.is_empty() {
+                    break;
+                } else {
+                    self.extend_common(pure_literals);
+                }
+            }
+
+            // if any clauses were removed, the cascade might continue
+            if self.partial_clauses.len() == num_clauses {
+                break;
+            } else {
+                num_clauses = self.partial_clauses.len();
+                continue;
+            }
+        }
+        if self.partial_clauses.is_empty() {
+            EvaluatedInstance::True
+        } else {
+            EvaluatedInstance::Undecided(self.partial_clauses.clone())
+        }
+    }
+
     // pub fn partition(&self) -> Instance {}
+    // pub fn merge(&self) -> Instance {}
     // pub fn solve(&self) -> EvaluatedInstance {}
 }
