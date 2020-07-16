@@ -1,22 +1,14 @@
 use std::collections::HashMap;
 use std::result;
 
-use crate::types::{Variable, Literal};
-
-/// An Assignment for a variable is either True, False, or Unassigned.
-#[derive(Debug, PartialEq, Clone, Copy)]
-pub enum Assignment {
-    True = 1,
-    False = -1,
-    Unassigned = 0,
-}
+use crate::types::{Variable, Literal, Assignment, Assignments};
 
 /// A certificate is represented by a HashMap of Index to Assignment,
 /// where the index represents a variable.
 /// A certificate may only contain True or False assignments.
 #[derive(Debug, Clone)]
 pub struct Certificate {
-    pub assignments: HashMap<u32, Assignment>,
+    assignments: Assignments,
 }
 
 // TODO: impl Display for Certificate
@@ -34,8 +26,12 @@ impl Certificate {
         }
     }
 
-    pub fn from(assignments: HashMap<Variable, Assignment>) -> Certificate {
+    pub fn from(assignments: Assignments) -> Certificate {
         Certificate { assignments }
+    }
+
+    pub fn assignments(&self) -> &Assignments {
+        &self.assignments
     }
 
     pub fn len(&self) -> usize {
@@ -62,13 +58,26 @@ impl Certificate {
             Assignment::False
         };
 
-        let &mut assignment = self.assignments.entry(variable).or_insert(assignment);
+        let assignment = *self.assignments.entry(variable).or_insert(assignment);
         let old_assignment = *self.assignments.get(&variable).unwrap();
 
         if old_assignment == assignment {
             Ok(())
         } else {
             Err("tried to insert variable with conflicting assignment")
+        }
+    }
+
+    pub fn insert_pair(&mut self, variable: Variable, assignment: Assignment) -> result::Result<(), &'static str> {
+        let old_assignment = self.get(variable as Literal);
+
+        if old_assignment == Assignment::Unassigned {
+            self.assignments.insert(variable, assignment);
+            Ok(())
+        } else if old_assignment != assignment {
+            Err("tried to insert variable with conflicting assignment")
+        } else {
+            Ok(())
         }
     }
 

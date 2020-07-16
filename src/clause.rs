@@ -1,15 +1,15 @@
 use std::fmt;
 
-use crate::types::{Variable, Literals};
-use crate::certificate::{Certificate, Assignment};
+use crate::types::{Variable, Literals, Assignment};
+use crate::certificate::Certificate;
 
 /// A Clause is represented as a Vec of integers.
 /// Each integer value represents a variable, the sign represents whether that variable is negated.
 /// For example, the vec [3, -1, 4] represents the clause (x_3 or (not x_1) or x_4).
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Clause {
-    pub literals: Literals,
-    pub partial_literals: Literals,
+    literals: Literals,
+    partial_literals: Literals,
 }
 
 /// Clauses can be evaluated using certificates.
@@ -35,11 +35,21 @@ impl fmt::Display for Clause {
 }
 
 impl Clause {
-    pub fn new(literals: Literals) -> Clause {
+
+    /// Clause takes ownership of literals and partial_literals
+    pub fn new(literals: Literals, partial_literals: Literals) -> Clause {
         Clause {
-            literals: literals.clone(),
-            partial_literals: literals,
+            literals: literals,
+            partial_literals: partial_literals,
         }
+    }
+
+    pub fn literals(&self) -> &Literals {
+        &self.literals
+    }
+
+    pub fn partial_literals(&self) -> &Literals {
+        &self.partial_literals
     }
 
     pub fn size(&self) -> usize {

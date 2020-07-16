@@ -7,23 +7,25 @@ use crate::certificate::Certificate;
 
 /// An Instance is represented as a Vec of Clauses.
 /// For example, the vec [C_1, C_2, C_3] represents the instance (C_1 and C_2 and C_3).
-/// An Instance has an associated vec of Certificates.
+/// An Instance represests a SAT Instance and implements methods to solve a SAT instance.
+/// It keeps track of the clauses that must be satisfied and all certificates that satisfy those clauses.
 #[derive(Debug, Clone)]
 pub struct Instance {
     clauses: Vec<Clause>,
     size: InstanceSize,
-    partial_clauses: Vec<Clause>,
+    partial_clauses: Vec<Clause>,  // used for partial evaluations
     partial_size: InstanceSize,
-    common_certificate: Certificate,
-    certificates: Vec<Certificate>,
+    common_certificate: Certificate,  // of assignmetns common to all 
+    certificates: Vec<Certificate>,  // collections of all satisfying certificates.
 }
 
 /// Return type from application of a certificate to an instance.
+/// Instances are evaluated to True (SAT), False (UNSAT), of Undecided.
 #[derive(Debug, Clone)]
 pub enum EvaluatedInstance {
     True,
-    False,
-    Undecided(Vec<Clause>),
+    False,  // TODO: Return proof of UNSAT in standard format.
+    Undecided(Vec<Clause>),  // the clauses still to be satisfied
 }
 
 impl fmt::Display for Instance {
@@ -41,18 +43,20 @@ impl fmt::Display for Instance {
 }
 
 impl Instance {
-    pub fn new(clauses: Vec<Clause>, num_variables: u32, num_clauses: u32) -> Instance {
-        let k: u32 = clauses
+    /// A new instance can be created by providing the vector of clauses, and the number of variables in them.
+    pub fn new(clauses: Vec<Clause>, m: usize) -> Instance {
+        let k = clauses
             .iter()
             .map(|x| x.len())
             .max()
-            .expect("expected max len of clauses") as u32;
+            .expect("expected max len of clauses");
+        let n = clauses.len();
 
         Instance {
             clauses: clauses.clone(),
-            size: (k, num_variables, num_clauses),
+            size: (k, m, n),
             partial_clauses: clauses,
-            partial_size: (k, num_variables, num_clauses),
+            partial_size: (k, m, n),
             common_certificate: Certificate::empty(),
             certificates: vec![],
         }
@@ -70,22 +74,22 @@ impl Instance {
     }
 
     pub fn recalculate_partial_size(&mut self) {
-        let k: u32 = self
+        let k = self
             .partial_clauses
             .iter()
             .map(|x| x.len())
             .max()
-            .expect("expected max len of clauses") as u32;
+            .expect("expected max len of clauses");
 
         let mut variables: HashSet<Variable> = HashSet::new();
         for clause in self.partial_clauses.iter() {
-            for &literal in clause.partial_literals.iter() {
+            for &literal in clause.partial_literals().iter() {
                 variables.insert(literal.abs() as Variable);
             }
         }
 
-        let m: u32 = variables.len() as u32;
-        let n: u32 = self.partial_clauses.len() as u32;
+        let m = variables.len();
+        let n = self.partial_clauses.len();
 
         self.partial_size = (k, m, n);
     }
@@ -107,10 +111,10 @@ impl Instance {
                 }
                 EvaluatedClause::Undecided(partial_literals) => {
                     // clause was not evaluated either way so we keep it around.
-                    partial_clauses.push(Clause {
-                        literals: clause.literals.clone(),
+                    partial_clauses.push(Clause::new(
+                        clause.literals().clone(),
                         partial_literals,
-                    });
+                    ));
                 }
             }
         }
@@ -136,8 +140,11 @@ impl Instance {
             }
         }
 
-        for (&k, &v) in certificate.assignments.iter() {
-            self.common_certificate.assignments.insert(k, v);
+        for (&k, &v) in certificate.assignments().iter() {
+            match self.common_certificate.insert_pair(k, v) {
+                Ok(_) => { continue; },
+                Err(msg) => { panic!(msg); }
+            }
         }
 
         match self.apply(&certificate) {
@@ -159,8 +166,8 @@ impl Instance {
 
                 // find all clauses with len 1 and collect their literals.
                 for clause in self.partial_clauses.iter() {
-                    if clause.partial_literals.len() == 1 {
-                        unit_literals.insert(clause.partial_literals[0]);
+                    if clause.partial_literals().len() == 1 {
+                        unit_literals.insert(clause.partial_literals()[0]);
                     } else {
                         continue;
                     }
@@ -173,12 +180,13 @@ impl Instance {
             }
 
             loop {  // cascade pure literals
+                // TODO: Only keep pure literals when setting them false would render the instance unsatisfiable.
                 let mut pure_literals: HashSet<Literal> = HashSet::new();
 
                 // get set of all literals
                 let mut literals: HashSet<Literal> = HashSet::new();
                 for clause in self.partial_clauses.iter() {
-                    for &literal in clause.partial_literals.iter() {
+                    for &literal in clause.partial_literals().iter() {
                         literals.insert(literal);
                     }
                 }
