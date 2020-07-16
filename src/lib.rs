@@ -1,4 +1,6 @@
 pub mod instance;
+pub mod clause;
+pub mod certificate;
 
 #[cfg(test)]
 mod tests {
