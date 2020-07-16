@@ -1,14 +1,9 @@
 use std::collections::HashSet;
 use std::fmt;
 
+use crate::types::{Variable, Literal, InstanceSize};
 use crate::clause::{Clause, EvaluatedClause};
 use crate::certificate::Certificate;
-
-pub type Literal = i32;
-pub type Variable = u32;
-// TODO: Consider switching to HashSet<Literal> instead.
-pub type Literals = Vec<Literal>;
-pub type InstanceSize = (u32, u32, u32);
 
 /// An Instance is represented as a Vec of Clauses.
 /// For example, the vec [C_1, C_2, C_3] represents the instance (C_1 and C_2 and C_3).

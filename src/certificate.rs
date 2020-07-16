@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::result;
 
-use crate::instance::{Literal, Variable};
+use crate::types::{Variable, Literal};
 
 /// An Assignment for a variable is either True, False, or Unassigned.
 #[derive(Debug, PartialEq, Clone, Copy)]

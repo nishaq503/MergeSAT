@@ -1,7 +1,7 @@
 use std::fmt;
 
+use crate::types::{Variable, Literals};
 use crate::certificate::{Certificate, Assignment};
-use crate::instance::{Literals, Variable};
 
 /// A Clause is represented as a Vec of integers.
 /// Each integer value represents a variable, the sign represents whether that variable is negated.
