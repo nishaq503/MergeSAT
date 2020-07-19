@@ -1,7 +1,7 @@
 use std::fmt;
 
-use crate::types::{Variable, Literals, Assignment};
 use crate::certificate::Certificate;
+use crate::types::{Assignment, Literals, Variable};
 
 /// A Clause is represented as a Vec of integers.
 /// Each integer value represents a variable, the sign represents whether that variable is negated.
@@ -35,12 +35,11 @@ impl fmt::Display for Clause {
 }
 
 impl Clause {
-
     /// Clause takes ownership of literals and partial_literals
     pub fn new(literals: Literals, partial_literals: Literals) -> Clause {
         Clause {
-            literals: literals,
-            partial_literals: partial_literals,
+            literals,
+            partial_literals,
         }
     }
 

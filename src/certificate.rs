@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::result;
 
-use crate::types::{Variable, Literal, Assignment, Assignments};
+use crate::types::{Assignment, Assignments, Literal, Variable};
 
 /// A certificate is represented by a HashMap of Index to Assignment,
 /// where the index represents a variable.
@@ -68,7 +68,11 @@ impl Certificate {
         }
     }
 
-    pub fn insert_pair(&mut self, variable: Variable, assignment: Assignment) -> result::Result<(), &'static str> {
+    pub fn insert_pair(
+        &mut self,
+        variable: Variable,
+        assignment: Assignment,
+    ) -> result::Result<(), &'static str> {
         let old_assignment = self.get(variable as Literal);
 
         if old_assignment == Assignment::Unassigned {

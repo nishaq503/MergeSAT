@@ -1,21 +1,21 @@
 use std::collections::HashSet;
 use std::fmt;
 
-use crate::types::{Variable, Literal, InstanceSize};
-use crate::clause::{Clause, EvaluatedClause};
 use crate::certificate::Certificate;
+use crate::clause::{Clause, EvaluatedClause};
+use crate::types::{InstanceSize, Literal, Variable};
 
 /// An Instance is represented as a Vec of Clauses.
 /// For example, the vec [C_1, C_2, C_3] represents the instance (C_1 and C_2 and C_3).
-/// An Instance represests a SAT Instance and implements methods to solve a SAT instance.
+/// An Instance represents a SAT Instance and implements methods to solve a SAT instance.
 /// It keeps track of the clauses that must be satisfied and all certificates that satisfy those clauses.
 #[derive(Debug, Clone)]
 pub struct Instance {
     clauses: Vec<Clause>,
     size: InstanceSize,
-    partial_clauses: Vec<Clause>,  // used for partial evaluations
+    partial_clauses: Vec<Clause>, // used for partial evaluations
     partial_size: InstanceSize,
-    common_certificate: Certificate,  // of assignmetns common to all 
+    common_certificate: Certificate, // of assignments common to all
     certificates: Vec<Certificate>,  // collections of all satisfying certificates.
 }
 
@@ -24,8 +24,8 @@ pub struct Instance {
 #[derive(Debug, Clone)]
 pub enum EvaluatedInstance {
     True,
-    False,  // TODO: Return proof of UNSAT in standard format.
-    Undecided(Vec<Clause>),  // the clauses still to be satisfied
+    False,                  // TODO: Return proof of UNSAT in standard format.
+    Undecided(Vec<Clause>), // the clauses still to be satisfied
 }
 
 impl fmt::Display for Instance {
@@ -111,10 +111,7 @@ impl Instance {
                 }
                 EvaluatedClause::Undecided(partial_literals) => {
                     // clause was not evaluated either way so we keep it around.
-                    partial_clauses.push(Clause::new(
-                        clause.literals().clone(),
-                        partial_literals,
-                    ));
+                    partial_clauses.push(Clause::new(clause.literals().clone(), partial_literals));
                 }
             }
         }
@@ -142,8 +139,12 @@ impl Instance {
 
         for (&k, &v) in certificate.assignments().iter() {
             match self.common_certificate.insert_pair(k, v) {
-                Ok(_) => { continue; },
-                Err(msg) => { panic!(msg); }
+                Ok(_) => {
+                    continue;
+                }
+                Err(msg) => {
+                    panic!(msg);
+                }
             }
         }
 
@@ -160,8 +161,10 @@ impl Instance {
     pub fn cascade(&mut self) -> EvaluatedInstance {
         let mut num_clauses = self.partial_clauses.len();
 
-        loop {  // cascade unit clauses and pure literals
-            loop {  // cascade unit clauses
+        loop {
+            // cascade unit clauses and pure literals
+            loop {
+                // cascade unit clauses
                 let mut unit_literals: HashSet<Literal> = HashSet::new();
 
                 // find all clauses with len 1 and collect their literals.
@@ -179,7 +182,8 @@ impl Instance {
                 }
             }
 
-            loop {  // cascade pure literals
+            loop {
+                // cascade pure literals
                 // TODO: Only keep pure literals when setting them false would render the instance unsatisfiable.
                 let mut pure_literals: HashSet<Literal> = HashSet::new();
 
