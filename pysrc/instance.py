@@ -25,6 +25,10 @@ class Certificate:
     def __contains__(self, literal: Literal):
         return abs(literal) in self.assignments
 
+    def copy(self) -> 'Certificate':
+        assignments: Dict[Variable, Assignment] = {k: v for k, v in self.assignments.items()}
+        return Certificate(assignments)
+
     def insert_pair(self, variable: Variable, assignment: Assignment):
         if not variable > 0:
             raise ValueError(f"Variables must be positive integers.")
@@ -82,9 +86,16 @@ class Certificate:
 
 
 class _Clause:
-    def __init__(self, literals: Literals, partial_literals: Literals):
+    def __init__(
+            self,
+            literals: Literals,
+            partial_literals: Union[Literals, None] = None,
+    ):
         self.literals: Literals = literals
-        self.partial_literals: Literals = partial_literals
+        if partial_literals is None:
+            self.partial_literals: Literals = [i for i in literals]
+        else:
+            self.partial_literals: Literals = partial_literals
 
     def size(self):
         return len(self.literals)
@@ -96,8 +107,8 @@ class _Clause:
         return any((variable == abs(literal) for literal in self.partial_literals))
 
     def copy(self) -> '_Clause':
-        literals = [literal for literal in self.literals]
-        partial_literals = [literal for literal in self.partial_literals]
+        literals = [i for i in self.literals]
+        partial_literals = [i for i in self.partial_literals]
         return _Clause(literals, partial_literals)
 
     def apply(self, certificate: Certificate) -> Union[bool, Literals]:
@@ -122,41 +133,97 @@ class _Clause:
 
 
 class Instance:
-    def __init__(self, clauses: List[_Clause]):
-        k = max(clause.size() for clause in clauses)
+    def __init__(
+            self,
+            clauses: List[_Clause],
+            partial_clauses: Union[List[_Clause], None] = None,
+            certificates: Union[List[Certificate], None] = None,
+    ):
 
-        variables = set()
-        [variables.update(set(map(abs, clause.literals))) for clause in clauses]
-        m = len(variables)
+        self.clauses: List[_Clause] = clauses
 
-        n = len(clauses)
+        if partial_clauses is None:
+            self.partial_clauses: List[_Clause] = [clause.copy() for clause in clauses]
+        else:
+            self.partial_clauses: List[_Clause] = partial_clauses
 
-        self.clauses: List[_Clause] = [clause.copy() for clause in clauses]
-        self.size: Size = (k, m, n)
+        # self.common_certificate: Certificate = Certificate()
+        if certificates is None:
+            self.certificates: List[Certificate] = list()
+        else:
+            self.certificates: List[Certificate] = certificates
 
-        self.partial_clauses: List[_Clause] = [clause.copy() for clause in clauses]
-        self.partial_size: Size = (k, m, n)
+        self.partial_size: Size = (-1, -1, -1)
+        self.recalculate_partial_size()
+        self.size: Size = (self.partial_size[0], self.partial_size[1], self.partial_size[2])
 
-        self.common_certificate: Certificate = Certificate()
-        self.certificates: List[Certificate] = list()
+        self.left: Union['Instance', None] = None
+        self.right: Union['Instance', None] = None
 
     def recalculate_partial_size(self) -> None:
-        pass
+        k = max(clause.size() for clause in self.clauses)
+
+        variables = set()
+        [variables.update(set(map(abs, clause.literals))) for clause in self.clauses]
+        m = len(variables)
+
+        n = len(self.clauses)
+        self.partial_size = (k, m, n)
+        return
 
     def apply(self, certificate: Certificate) -> Union[bool, List[_Clause]]:
-        pass
+        partial_clauses: List[_Clause] = list()
+        for clause in self.partial_clauses:
+            partial_literals = clause.apply(certificate)
+            if isinstance(partial_literals, bool):
+                if partial_literals:
+                    continue
+                else:
+                    return False
+            else:
+                literals: Literals = [i for i in clause.literals]
+                partial_clauses.append(_Clause(literals, partial_literals))
+        if len(partial_clauses) > 0:
+            return partial_clauses
+        else:
+            return True
 
     def _extend_common(self, literals: Literals) -> Union[bool, List[_Clause]]:
-        pass
+        raise NotImplementedError
 
     def _cascade(self) -> Union[bool, List[_Clause]]:
-        pass
+        raise NotImplementedError
 
     def _partition(self) -> None:
-        pass
+        if len(self.partial_clauses) > 1:
+            half = len(self.partial_clauses) // 2
 
-    def _merge(self) -> 'Instance':
-        pass
+            self.left = Instance(self.partial_clauses[:half])
+            self.right = Instance(self.partial_clauses[half:])
+        else:
+            return
 
-    def solve(self) -> Union[bool, List[_Clause]]:
+    def _merge(self, other: 'Instance') -> 'Instance':
+        clauses = [clause.copy() for clause in self.clauses]
+        clauses.extend((clause.copy() for clause in other.clauses))
+
+        partial_clauses = [clause.copy() for clause in self.partial_clauses]
+        partial_clauses.extend((clause.copy() for clause in other.partial_clauses))
+
+        certificates: List[Certificate] = list()
+        for left in self.certificates:
+            for right in other.certificates:
+                new_certificate = left.merge(right)
+                if new_certificate is None:
+                    continue
+                else:
+                    certificates.append(new_certificate)
+
+        return Instance(
+            clauses,
+            partial_clauses,
+            certificates,
+        )
+
+    def solve(self) -> bool:
         pass
