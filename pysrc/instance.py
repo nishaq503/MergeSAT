@@ -1,12 +1,20 @@
-from typing import Set, Union
+from typing import Set, Union, List, Dict
 
-import numpy as np
-from pysrc.types import Assignments, Literal, Variable, Assignment
+from pysrc.types import Assignments, Literal, Variable, Assignment, Literals, Size
 
 
 class Certificate:
-    def __init__(self, assignments: Union[Assignments, None] = None):
-        self.assignments: Assignments = dict() if assignments is None else assignments
+    def __init__(self, assignments: Union[Dict[Variable, Assignment], None] = None):
+        if assignments is None:
+            assignments = dict()
+
+        if any((k <= 0 for k in assignments.keys())):
+            raise ValueError(f"assignments can only be made for variables, "
+                             f"and all variables must be positive integers.")
+        self.assignments: Dict[Variable, Assignment] = {
+            k: v for k, v in assignments.items()
+            if v is not Assignment.unassigned
+        }
 
     def __len__(self):
         return len(self.assignments)
@@ -15,26 +23,37 @@ class Certificate:
         return len(self.assignments) != 0
 
     def __contains__(self, literal: Literal):
-        return np.abs(literal) in self.assignments
+        return abs(literal) in self.assignments
 
     def insert_pair(self, variable: Variable, assignment: Assignment):
+        if not variable > 0:
+            raise ValueError(f"Variables must be positive integers.")
+        if assignment is Assignment.unassigned:
+            return
+
         if variable not in self.assignments:
             self.assignments[variable] = assignment
-
         old_assignment: Assignment = self.assignments[variable]
 
         if assignment == old_assignment:
             return
         else:
-            raise ValueError(f"tried to insert a conflicting assignment: {variable} was assigned {old_assignment}")
+            raise ValueError(f"tried to insert a conflicting assignment: "
+                             f"{variable} was assigned {old_assignment}")
 
     def insert(self, literal: Literal):
-        variable: Variable = np.abs(literal)
+        if literal == 0:
+            raise ValueError(f"0 is not a valid literal.")
+
+        variable: Variable = abs(literal)
         assignment: Assignment = Assignment.true if literal > 0 else Assignment.false
         return self.insert_pair(variable, assignment)
 
     def get(self, literal: Literal) -> Assignment:
-        variable: Variable = np.abs(literal)
+        if literal == 0:
+            raise ValueError(f"0 is not a valid literal.")
+
+        variable: Variable = abs(literal)
 
         if variable in self.assignments:
             assignment: Assignment = self.assignments[variable]

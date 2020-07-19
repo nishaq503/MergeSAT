@@ -1,12 +1,10 @@
 from enum import Enum
 from typing import List, Tuple, Dict
 
-import numpy as np
-
-Variable = np.uint32
-Literal = np.int32
+Variable = int
+Literal = int
 Literals = List[Literal]
-Size = Tuple[np.uint64, np.uint64, np.uint64]
+Size = Tuple[int, int, int]
 
 
 class Assignment(Enum):
