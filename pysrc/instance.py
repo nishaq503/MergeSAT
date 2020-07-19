@@ -1,6 +1,7 @@
-from typing import Set, Union, List, Dict, TextIO
+import random
+from typing import Set, Union, List, Dict, TextIO, Tuple, FrozenSet
 
-from pysrc.types import Assignments, Literal, Variable, Assignment, Literals, Size
+from pysrc.solver_types import Assignments, Literal, Variable, Assignment, Literals, Size
 
 __all__ = [
     'Certificate',
@@ -29,6 +30,14 @@ class Certificate:
 
     def __contains__(self, literal: Literal):
         return abs(literal) in self.assignments
+
+    def __str__(self):
+        pairs: List[Tuple[int, str]] = [
+            (k, "True " if self.assignments[k] is Assignment.true else "False")
+            if k in self.assignments else (k, 'Any  ')
+            for k in range(1, max(self.assignments.keys()) + 1)
+        ]
+        return ' '.join((f'{k}: {v}' for k, v in pairs))
 
     def copy(self) -> 'Certificate':
         assignments: Dict[Variable, Assignment] = {k: v for k, v in self.assignments.items()}
@@ -93,14 +102,14 @@ class Certificate:
 class _Clause:
     def __init__(
             self,
-            literals: Literals,
-            partial_literals: Union[Literals, None] = None,
+            literals: List[Literal],
+            partial_literals: Union[List[Literal], None] = None,
     ):
-        self.literals: Literals = literals
+        self.literals: Literals = Literals(literals)
         if partial_literals is None:
-            self.partial_literals: Literals = [i for i in literals]
+            self.partial_literals: Literals = Literals(literals)
         else:
-            self.partial_literals: Literals = partial_literals
+            self.partial_literals: Literals = Literals(partial_literals)
 
     def size(self):
         return len(self.literals)
@@ -120,7 +129,7 @@ class _Clause:
         return _Clause(literals, partial_literals)
 
     def apply(self, certificate: Certificate) -> Union[bool, Literals]:
-        partial_literals: Literals = list()
+        partial_literals: Literals = Literals(list())
         for literal in self.partial_literals:
             assignment: Assignment = certificate.get(literal)
             if assignment is Assignment.true:
@@ -207,23 +216,40 @@ class Instance:
         return f'\n'.join((size, clauses))
 
     def write(self, fp: TextIO):
-        size = f'p cnf {self.size[1]}, {self.size[2]}\n'
+        size = f'p cnf {self.size[1]} {self.size[2]}\n'
         fp.write(size)
         for clause in self.clauses:
             fp.write(str(clause) + ' 0 \n')
         return
 
+    @staticmethod
+    def generate_random(k: int, num_vars: int, num_clauses: int) -> 'Instance':
+        clauses: Set[FrozenSet[Literal]] = set()
+
+        variables = list(range(1, num_vars + 1))
+        while len(clauses) < num_clauses:
+            # size = k
+            size = random.randint(3, k)
+            signs = random.choices([1, -1], k=size)
+            literals = random.sample(variables, size)
+            clauses.add(frozenset((sign * literal for sign, literal in zip(signs, literals))))
+
+        clauses: List[Literals] = [Literals(sorted(literals)) for literals in clauses]
+        clauses: List[_Clause] = [_Clause([i for i in literals]) for literals in sorted(clauses)]
+        return Instance(clauses)
+
     def apply(self, certificate: Certificate) -> Union[bool, List[_Clause]]:
         partial_clauses: List[_Clause] = list()
         for clause in self.partial_clauses:
-            partial_literals = clause.apply(certificate)
+            partial_literals: Union[bool, Literals] = clause.apply(certificate)
             if isinstance(partial_literals, bool):
                 if partial_literals:
                     continue
                 else:
                     return False
             else:
-                literals: Literals = [i for i in clause.literals]
+                literals: List[Literal] = [i for i in clause.literals]
+                partial_literals: List[Literal] = [i for i in partial_literals]
                 partial_clauses.append(_Clause(literals, partial_literals))
         if len(partial_clauses) > 0:
             return partial_clauses
@@ -276,6 +302,9 @@ class Instance:
             leaf.certificates = leaf.clauses[0].solve()
 
         while len(leaves) > 1:
+            num_solutions = sum((leaf.num_solutions() for leaf in leaves))
+            num_certificates = sum((len(leaf.certificates) for leaf in leaves))
+            print(f'{len(leaves)} instances, {num_solutions} potential solutions, {num_certificates} certificates')
             new_leaves: List['Instance'] = list()
             for i, j in zip(range(0, len(leaves), 2), range(1, len(leaves), 2)):
                 new_leaf = leaves[i]._merge(leaves[j])
@@ -284,8 +313,13 @@ class Instance:
                 else:
                     return False
             else:
-                if len(leaves) % 2:
+                if len(leaves) % 2 == 1:
                     new_leaves.append(leaves[-1])
+            leaves = new_leaves
 
         self.certificates = leaves[0].certificates
         return len(self.certificates) > 0
+
+    def num_solutions(self) -> int:
+        num_vars, num_solutions = self.size[1], 0
+        return sum((2**(num_vars - len(certificate)) for certificate in self.certificates))

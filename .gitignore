@@ -27,3 +27,4 @@ Cargo.lock
 benchmarks
 .idea
 out.cnf
+random.cnf
