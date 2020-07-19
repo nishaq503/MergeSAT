@@ -1,6 +1,11 @@
-from typing import Set, Union, List, Dict
+from typing import Set, Union, List, Dict, TextIO
 
 from pysrc.types import Assignments, Literal, Variable, Assignment, Literals, Size
+
+__all__ = [
+    'Certificate',
+    'Instance',
+]
 
 
 class Certificate:
@@ -106,6 +111,9 @@ class _Clause:
     def __contains__(self, variable: Variable) -> bool:
         return any((variable == abs(literal) for literal in self.partial_literals))
 
+    def __str__(self):
+        return ' '.join(map(str, self.literals))
+
     def copy(self) -> '_Clause':
         literals = [i for i in self.literals]
         partial_literals = [i for i in self.partial_literals]
@@ -169,6 +177,40 @@ class Instance:
 
         n = len(self.clauses)
         self.partial_size = (k, m, n)
+        return
+
+    @staticmethod
+    def read(fp: TextIO) -> 'Instance':
+        clauses: List[_Clause] = list()
+        m, n = -1, -1
+
+        line = fp.readline().split()
+        while line:
+            if line[0] == 'c':
+                pass
+            elif line[0] == 'p':
+                m = int(line[2])
+                n = int(line[3])
+            else:
+                literals = list(map(int, line[:-1]))
+                clauses.append(_Clause(literals))
+            line = fp.readline().split()
+
+        instance: Instance = Instance(clauses)
+        assert m >= instance.size[1]
+        assert n == instance.size[2]
+        return instance
+
+    def __str__(self):
+        size = f'k = {self.size[0]}, m = {self.size[1]}, n = {self.size[2]}'
+        clauses = f'\n'.join(map(str, self.clauses))
+        return f'\n'.join((size, clauses))
+
+    def write(self, fp: TextIO):
+        size = f'p cnf {self.size[1]}, {self.size[2]}\n'
+        fp.write(size)
+        for clause in self.clauses:
+            fp.write(str(clause) + ' 0 \n')
         return
 
     def apply(self, certificate: Certificate) -> Union[bool, List[_Clause]]:
