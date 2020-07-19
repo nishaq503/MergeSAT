@@ -79,3 +79,70 @@ class Certificate:
             return Certificate(assignments)
         else:
             return None
+
+
+class _Clause:
+    def __init__(self, literals: Literals, partial_literals: Literals):
+        self.literals: Literals = literals
+        self.partial_literals: Literals = partial_literals
+
+    def size(self):
+        return len(self.literals)
+
+    def __len__(self):
+        return len(self.partial_literals)
+
+    def __contains__(self, variable: Variable) -> bool:
+        return any((variable == abs(literal) for literal in self.partial_literals))
+
+    def copy(self) -> '_Clause':
+        literals = [literal for literal in self.literals]
+        partial_literals = [literal for literal in self.partial_literals]
+        return _Clause(literals, partial_literals)
+
+    def apply(self, certificate: Certificate) -> Union[bool, Literals]:
+        pass
+
+    def solve(self) -> List[Certificate]:
+        pass
+
+
+class Instance:
+    def __init__(self, clauses: List[_Clause]):
+        k = max(clause.size() for clause in clauses)
+
+        variables = set()
+        [variables.update(set(map(abs, clause.literals))) for clause in clauses]
+        m = len(variables)
+
+        n = len(clauses)
+
+        self.clauses: List[_Clause] = [clause.copy() for clause in clauses]
+        self.size: Size = (k, m, n)
+
+        self.partial_clauses: List[_Clause] = [clause.copy() for clause in clauses]
+        self.partial_size: Size = (k, m, n)
+
+        self.common_certificate: Certificate = Certificate()
+        self.certificates: List[Certificate] = list()
+
+    def recalculate_partial_size(self) -> None:
+        pass
+
+    def apply(self, certificate: Certificate) -> Union[bool, List[_Clause]]:
+        pass
+
+    def _extend_common(self, literals: Literals) -> Union[bool, List[_Clause]]:
+        pass
+
+    def _cascade(self) -> Union[bool, List[_Clause]]:
+        pass
+
+    def _partition(self) -> None:
+        pass
+
+    def _merge(self) -> 'Instance':
+        pass
+
+    def solve(self) -> Union[bool, List[_Clause]]:
+        pass
