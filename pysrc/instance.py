@@ -203,13 +203,7 @@ class Instance:
         else:
             return
 
-    def _merge(self, other: 'Instance') -> 'Instance':
-        clauses = [clause.copy() for clause in self.clauses]
-        clauses.extend((clause.copy() for clause in other.clauses))
-
-        partial_clauses = [clause.copy() for clause in self.partial_clauses]
-        partial_clauses.extend((clause.copy() for clause in other.partial_clauses))
-
+    def _merge(self, other: 'Instance') -> Union[bool, 'Instance']:
         certificates: List[Certificate] = list()
         for left in self.certificates:
             for right in other.certificates:
@@ -219,11 +213,37 @@ class Instance:
                 else:
                     certificates.append(new_certificate)
 
-        return Instance(
-            clauses,
-            partial_clauses,
-            certificates,
-        )
+        if len(certificates) > 0:
+            clauses = [clause.copy() for clause in self.clauses]
+            clauses.extend((clause.copy() for clause in other.clauses))
+
+            partial_clauses = [clause.copy() for clause in self.partial_clauses]
+            partial_clauses.extend((clause.copy() for clause in other.partial_clauses))
+
+            return Instance(
+                clauses,
+                partial_clauses,
+                certificates,
+            )
+        else:
+            return False
 
     def solve(self) -> bool:
-        pass
+        leaves: List['Instance'] = [Instance([clause.copy()]) for clause in self.partial_clauses]
+        for leaf in leaves:
+            leaf.certificates = leaf.clauses[0].solve()
+
+        while len(leaves) > 1:
+            new_leaves: List['Instance'] = list()
+            for i, j in zip(range(0, len(leaves), 2), range(1, len(leaves), 2)):
+                new_leaf = leaves[i]._merge(leaves[j])
+                if isinstance(new_leaf, Instance):
+                    new_leaves.append(new_leaf)
+                else:
+                    return False
+            else:
+                if len(leaves) % 2:
+                    new_leaves.append(leaves[-1])
+
+        self.certificates = leaves[0].certificates
+        return len(self.certificates) > 0
