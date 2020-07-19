@@ -101,10 +101,24 @@ class _Clause:
         return _Clause(literals, partial_literals)
 
     def apply(self, certificate: Certificate) -> Union[bool, Literals]:
-        pass
+        partial_literals: Literals = list()
+        for literal in self.partial_literals:
+            assignment: Assignment = certificate.get(literal)
+            if assignment is Assignment.true:
+                return True
+            elif assignment is Assignment.false:
+                continue
+            else:
+                partial_literals.append(literal)
+        return partial_literals
 
     def solve(self) -> List[Certificate]:
-        pass
+        certificates: List[Certificate] = list()
+        for literal in self.partial_literals:
+            certificate: Certificate = Certificate()
+            certificate.insert(literal)
+            certificates.append(certificate)
+        return certificates
 
 
 class Instance:
