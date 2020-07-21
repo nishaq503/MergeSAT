@@ -10,7 +10,15 @@ __all__ = [
 
 
 class Certificate:
-    def __init__(self, assignments: Union[Dict[Variable, Assignment], None] = None):
+    def __init__(
+            self,
+            num_vars: int,
+            assignments: Union[Dict[Variable, Assignment], None] = None,
+    ):
+        if num_vars <= 0:
+            raise ValueError(f"must have a positive number of variables")
+        self.num_vars = num_vars
+
         if assignments is None:
             assignments = dict()
 
@@ -35,13 +43,16 @@ class Certificate:
         pairs: List[Tuple[int, str]] = [
             (k, "True " if self.assignments[k] is Assignment.true else "False")
             if k in self.assignments else (k, 'Any  ')
-            for k in range(1, max(self.assignments.keys()) + 1)
+            for k in range(1, self.num_vars + 1)
         ]
         return ' '.join((f'{k}: {v}' for k, v in pairs))
 
+    def __hash__(self):
+        return hash(str(self))
+
     def copy(self) -> 'Certificate':
         assignments: Dict[Variable, Assignment] = {k: v for k, v in self.assignments.items()}
-        return Certificate(assignments)
+        return Certificate(self.num_vars, assignments)
 
     def insert_pair(self, variable: Variable, assignment: Assignment):
         if not variable > 0:
@@ -94,7 +105,7 @@ class Certificate:
         if self.is_compatible(other):
             assignments: Assignments = {k: v for k, v in self.assignments.items()}
             assignments.update(other.assignments)
-            return Certificate(assignments)
+            return Certificate(self.num_vars, assignments)
         else:
             return None
 
@@ -103,9 +114,15 @@ class _Clause:
     def __init__(
             self,
             literals: List[Literal],
+            num_vars: int,
             partial_literals: Union[List[Literal], None] = None,
     ):
         self.literals: Literals = Literals(literals)
+
+        if num_vars <= 0:
+            raise ValueError(f"must have a positive number of variables")
+        self.num_vars = num_vars
+
         if partial_literals is None:
             self.partial_literals: Literals = Literals(literals)
         else:
@@ -126,7 +143,7 @@ class _Clause:
     def copy(self) -> '_Clause':
         literals = [i for i in self.literals]
         partial_literals = [i for i in self.partial_literals]
-        return _Clause(literals, partial_literals)
+        return _Clause(literals, self.num_vars, partial_literals)
 
     def apply(self, certificate: Certificate) -> Union[bool, Literals]:
         partial_literals: Literals = Literals(list())
@@ -143,7 +160,7 @@ class _Clause:
     def solve(self) -> List[Certificate]:
         certificates: List[Certificate] = list()
         for literal in self.partial_literals:
-            certificate: Certificate = Certificate()
+            certificate: Certificate = Certificate(self.num_vars)
             certificate.insert(literal)
             certificates.append(certificate)
         return certificates
@@ -191,23 +208,23 @@ class Instance:
     @staticmethod
     def read(fp: TextIO) -> 'Instance':
         clauses: List[_Clause] = list()
-        m, n = -1, -1
+        num_vars, num_clauses = -1, -1
 
         line = fp.readline().split()
         while line:
             if line[0] == 'c':
                 pass
             elif line[0] == 'p':
-                m = int(line[2])
-                n = int(line[3])
+                num_vars = int(line[2])
+                num_clauses = int(line[3])
             else:
                 literals = list(map(int, line[:-1]))
-                clauses.append(_Clause(literals))
+                clauses.append(_Clause(literals, num_vars))
             line = fp.readline().split()
 
         instance: Instance = Instance(clauses)
-        assert m >= instance.size[1]
-        assert n == instance.size[2]
+        assert num_vars >= instance.size[1]
+        assert num_clauses == instance.size[2]
         return instance
 
     def __str__(self):
@@ -235,7 +252,7 @@ class Instance:
             clauses.add(frozenset((sign * literal for sign, literal in zip(signs, literals))))
 
         clauses: List[Literals] = [Literals(sorted(literals)) for literals in clauses]
-        clauses: List[_Clause] = [_Clause([i for i in literals]) for literals in sorted(clauses)]
+        clauses: List[_Clause] = [_Clause([i for i in literals], num_vars) for literals in sorted(clauses)]
         return Instance(clauses)
 
     def apply(self, certificate: Certificate) -> Union[bool, List[_Clause]]:
@@ -250,7 +267,7 @@ class Instance:
             else:
                 literals: List[Literal] = [i for i in clause.literals]
                 partial_literals: List[Literal] = [i for i in partial_literals]
-                partial_clauses.append(_Clause(literals, partial_literals))
+                partial_clauses.append(_Clause(literals, self.size[1], partial_literals))
         if len(partial_clauses) > 0:
             return partial_clauses
         else:
@@ -272,14 +289,14 @@ class Instance:
             return
 
     def _merge(self, other: 'Instance') -> Union[bool, 'Instance']:
-        certificates: List[Certificate] = list()
+        certificates: Set[Certificate] = set()
         for left in self.certificates:
             for right in other.certificates:
                 new_certificate = left.merge(right)
                 if new_certificate is None:
                     continue
                 else:
-                    certificates.append(new_certificate)
+                    certificates.add(new_certificate)
 
         if len(certificates) > 0:
             clauses = [clause.copy() for clause in self.clauses]
@@ -291,35 +308,54 @@ class Instance:
             return Instance(
                 clauses,
                 partial_clauses,
-                certificates,
+                list(certificates),
             )
         else:
             return False
 
     def solve(self) -> bool:
-        leaves: List['Instance'] = [Instance([clause.copy()]) for clause in self.partial_clauses]
-        for leaf in leaves:
-            leaf.certificates = leaf.clauses[0].solve()
+        instances: List['Instance'] = [Instance([clause.copy()]) for clause in self.partial_clauses]
+        for instance in instances:
+            instance.certificates = instance.clauses[0].solve()
 
-        while len(leaves) > 1:
-            num_solutions = sum((leaf.num_solutions() for leaf in leaves))
-            num_certificates = sum((len(leaf.certificates) for leaf in leaves))
-            print(f'{len(leaves)} instances, {num_solutions} potential solutions, {num_certificates} certificates')
-            new_leaves: List['Instance'] = list()
-            for i, j in zip(range(0, len(leaves), 2), range(1, len(leaves), 2)):
-                new_leaf = leaves[i]._merge(leaves[j])
-                if isinstance(new_leaf, Instance):
-                    new_leaves.append(new_leaf)
+        new_instances: List['Instance'] = [instances.pop()]
+        while instances:
+            if len(new_instances[-1].certificates) < 10**4:
+                new_instance = new_instances[-1]._merge(instances.pop())
+                if isinstance(new_instance, Instance):
+                    new_instances[-1] = new_instance
                 else:
                     return False
             else:
-                if len(leaves) % 2 == 1:
-                    new_leaves.append(leaves[-1])
-            leaves = new_leaves
+                new_instances.append(instances.pop())
+        instances = new_instances
 
-        self.certificates = leaves[0].certificates
+        while len(instances) > 1:
+            num_solutions = sum((instance.num_solutions for instance in instances))
+            num_certificates = sum((len(instance.certificates) for instance in instances))
+            print(f'{len(instances)} instances, {num_solutions} potential solutions, {num_certificates} certificates')
+
+            new_instances = list()
+            for i, j in zip(range(0, len(instances), 2), range(1, len(instances), 2)):
+                new_instance = instances[i]._merge(instances[j])
+                if isinstance(new_instance, Instance):
+                    new_instances.append(new_instance)
+                else:
+                    return False
+            if len(instances) % 2 == 1:
+                new_instances.append(instances[-1])
+            instances = new_instances
+
+        self.certificates = instances[0].certificates
         return len(self.certificates) > 0
 
+    @property
     def num_solutions(self) -> int:
         num_vars, num_solutions = self.size[1], 0
         return sum((2**(num_vars - len(certificate)) for certificate in self.certificates))
+
+    def write_solutions(self, fp: TextIO):
+        fp.write(f'found {self.num_solutions} solutions, {len(self.certificates)} certificates\n')
+        for certificate in self.certificates:
+            fp.write(str(certificate))
+            fp.write('\n')

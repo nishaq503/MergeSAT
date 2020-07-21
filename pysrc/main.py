@@ -1,3 +1,5 @@
+from time import time
+
 from pysrc.instance import Instance
 from random import seed
 
@@ -14,16 +16,19 @@ def read(filename: str) -> Instance:
         return Instance.read(fp)
 
 
-def test(instance: Instance) -> None:
+def test(instance: Instance, filename: str) -> None:
+    start = time()
     instance.solve()
-    print(f'found {instance.num_solutions()} solutions, {len(instance.certificates)} certificates')
-    # for certificate in instance.certificates:
-    #     print(str(certificate))
+    end = time()
+    print(f'size: {instance.size}, time: {end - start:.2f} seconds.')
+    with open(filename, 'w') as fp:
+        instance.write_solutions(fp)
     return
 
 
 if __name__ == '__main__':
     seed(42)
-    _filename = '../random.cnf'
-    # gen_random(_filename, 5, 20, 50)
-    test(read(_filename))
+    _infile = '../sdiv15prop.cnf'
+    _outfile = '../sdiv15prop_out.cnf'
+    # gen_random(_infile, 3, 8, 64)
+    test(read(_infile), _outfile)
